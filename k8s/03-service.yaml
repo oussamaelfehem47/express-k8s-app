@@ -1,0 +1,12 @@
+﻿apiVersion: v1
+kind: Service
+metadata:
+  name: express-service
+  namespace: express-app
+spec:
+  selector:
+    app: express-app
+  ports:
+  - port: 80
+    targetPort: 3000
+  type: LoadBalancer

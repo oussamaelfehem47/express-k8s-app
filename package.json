@@ -1,0 +1,17 @@
+
+{
+  "name": "express-k8s-app",
+  "version": "1.0.0",
+  "description": "Simple Express app for Kubernetes deployment",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"No tests specified\" && exit 0"
+  },
+  "dependencies": {
+    "express": "^4.18.0"
+  },
+  "keywords": ["express", "kubernetes", "docker"],
+  "author": "Your Name",
+  "license": "MIT"
+}

@@ -1,0 +1,12 @@
+﻿apiVersion: v2
+name: express-app
+description: A Helm chart for Kubernetes Express.js Application
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+
+# Dependencies would go here if needed
+# dependencies:
+#   - name: postgresql
+#     version: "12.0.0"
+#     repository: "https://charts.bitnami.com/bitnami"

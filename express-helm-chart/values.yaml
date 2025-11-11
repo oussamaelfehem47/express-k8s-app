@@ -1,0 +1,79 @@
+﻿# Default values for express-app
+# This is a YAML-formatted file
+
+# Application settings
+app:
+  name: "express-app"
+  environment: "production"
+
+# Deployment configuration
+replicaCount: 3
+
+image:
+  repository: "express-k8s-app"
+  tag: "latest"
+  pullPolicy: "IfNotPresent"
+
+# Service configuration
+service:
+  type: "LoadBalancer"  # ClusterIP, NodePort, or LoadBalancer
+  port: 80
+  targetPort: 3000
+  # nodePort: 30080  # Uncomment for NodePort type
+
+# Ingress configuration (optional)
+ingress:
+  enabled: false
+  className: "nginx"
+  hosts:
+    - host: "express.local"
+      paths:
+        - path: "/"
+          pathType: "Prefix"
+  annotations: {}
+    # nginx.ingress.kubernetes.io/rewrite-target: "/"
+
+# Resource limits
+resources:
+  limits:
+    cpu: "200m"
+    memory: "128Mi"
+  requests:
+    cpu: "100m"
+    memory: "64Mi"
+
+# Auto-scaling (optional)
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 80
+
+# Environment variables
+env:
+  - name: "NODE_ENV"
+    value: "production"
+  - name: "PORT"
+    value: "3000"
+
+# Health checks
+readinessProbe:
+  path: "/health"
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+livenessProbe:
+  path: "/health"
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+# Node selector, tolerations, and affinity (advanced)
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

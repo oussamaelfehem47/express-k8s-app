@@ -1,0 +1,27 @@
+﻿1. Get the application URL by running these commands:
+{{- if .Values.ingress.enabled }}
+{{- range .Values.ingress.hosts }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ .host }}{{ .path }}
+{{- end }}
+{{- else if contains "LoadBalancer" .Values.service.type }}
+  export SERVICE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].port}" services {{ include "express-app.fullname" . }})
+  export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ include "express-app.fullname" . }}-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+  echo http://$SERVICE_IP:$SERVICE_PORT
+{{- else if contains "NodePort" .Values.service.type }}
+  export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "express-app.fullname" . }})
+  export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo http://$NODE_IP:$NODE_PORT
+{{- else if contains "ClusterIP" .Values.service.type }}
+  echo "Service type is ClusterIP. Use port-forward to access:"
+  echo "kubectl port-forward svc/{{ include "express-app.fullname" . }}-service 8080:{{ .Values.service.port }}"
+  echo "Then access via http://localhost:8080"
+{{- end }}
+
+2. Check the application status:
+  kubectl get pods -n {{ .Release.Namespace }} -l app={{ .Chart.Name }}
+
+3. View application logs:
+  kubectl logs -n {{ .Release.Namespace }} -l app={{ .Chart.Name }} --tail=10
+
+4. Test the health endpoint:
+  kubectl exec -n {{ .Release.Namespace }} -it $(kubectl get pods -n {{ .Release.Namespace }} -l app={{ .Chart.Name }} -o name | head -1) -- curl http://localhost:{{ .Values.service.targetPort }}/health
