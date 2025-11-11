@@ -161,19 +161,39 @@ foreach ($match in $keyMatches) {
     }
 }
 
-# Find and replace certificate-authority
-$caMatches = [regex]::Matches($fixedContent, "certificate-authority:\s*(.+?)(\r?\n)")
-foreach ($match in $caMatches) {
-    $caPath = $match.Groups[1].Value.Trim()
-    Write-Host "Processing certificate-authority: $caPath" -ForegroundColor Yellow
+# For ngrok, we should skip TLS verification instead of using certificate-authority
+# Check if this is an ngrok URL
+if ($fixedContent -match "server:\s*https://.*\.ngrok") {
+    Write-Host "Detected ngrok URL - configuring to skip TLS verification..." -ForegroundColor Yellow
+    # Remove certificate-authority
+    $fixedContent = $fixedContent -replace "certificate-authority:\s*(.+?)(\r?\n)", ""
+    $fixedContent = $fixedContent -replace "certificate-authority-data:\s*(.+?)(\r?\n)", ""
     
-    if (Test-Path $caPath) {
-        $caData = [Convert]::ToBase64String([System.IO.File]::ReadAllBytes($caPath))
-        $replacement = "certificate-authority-data: $caData" + $match.Groups[2].Value
-        $fixedContent = $fixedContent -replace [regex]::Escape($match.Value), $replacement
-        Write-Host "  Embedded as base64" -ForegroundColor Green
-    } else {
-        Write-Host "  Warning: File not found: $caPath" -ForegroundColor Yellow
+    # Add insecure-skip-tls-verify
+    $serverMatches = [regex]::Matches($fixedContent, "server:\s*(https://.*\.ngrok[^\r\n]+)(\r?\n)")
+    foreach ($match in $serverMatches) {
+        $serverURL = $match.Groups[1].Value
+        if ($fixedContent -notmatch "insecure-skip-tls-verify:\s*true") {
+            $replacement = "server: $serverURL" + $match.Groups[2].Value + "    insecure-skip-tls-verify: true" + $match.Groups[2].Value
+            $fixedContent = $fixedContent -replace [regex]::Escape($match.Value), $replacement
+            Write-Host "  Added insecure-skip-tls-verify: true" -ForegroundColor Green
+        }
+    }
+} else {
+    # For non-ngrok, embed certificate-authority normally
+    $caMatches = [regex]::Matches($fixedContent, "certificate-authority:\s*(.+?)(\r?\n)")
+    foreach ($match in $caMatches) {
+        $caPath = $match.Groups[1].Value.Trim()
+        Write-Host "Processing certificate-authority: $caPath" -ForegroundColor Yellow
+        
+        if (Test-Path $caPath) {
+            $caData = [Convert]::ToBase64String([System.IO.File]::ReadAllBytes($caPath))
+            $replacement = "certificate-authority-data: $caData" + $match.Groups[2].Value
+            $fixedContent = $fixedContent -replace [regex]::Escape($match.Value), $replacement
+            Write-Host "  Embedded as base64" -ForegroundColor Green
+        } else {
+            Write-Host "  Warning: File not found: $caPath" -ForegroundColor Yellow
+        }
     }
 }
 

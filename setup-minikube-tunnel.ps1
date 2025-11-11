@@ -153,6 +153,18 @@ $ngrokHTTPS = $publicURL -replace '^http://', 'https://'
 $kubeconfigContent = $kubeconfigContent -replace "server:\s*https://127\.0\.0\.1:\d+", "server: $ngrokHTTPS"
 $kubeconfigContent = $kubeconfigContent -replace "server:\s*https://.*:58093", "server: $ngrokHTTPS"
 
+# Skip TLS verification for ngrok (ngrok uses self-signed certificates)
+Write-Host "   Configuring to skip TLS verification for ngrok..." -ForegroundColor Yellow
+# Remove certificate-authority if present (we'll skip verification instead)
+$kubeconfigContent = $kubeconfigContent -replace "certificate-authority:\s*(.+?)(\r?\n)", ""
+$kubeconfigContent = $kubeconfigContent -replace "certificate-authority-data:\s*(.+?)(\r?\n)", ""
+
+# Add insecure-skip-tls-verify after server line
+if ($kubeconfigContent -notmatch "insecure-skip-tls-verify:\s*true") {
+    $kubeconfigContent = $kubeconfigContent -replace "(server:\s*$([regex]::Escape($ngrokHTTPS)))(\r?\n)", "`$1`$2    insecure-skip-tls-verify: true`$2"
+    Write-Host "     Added insecure-skip-tls-verify: true" -ForegroundColor Green
+}
+
 # Embed certificates as base64 (fix for CI/CD)
 Write-Host "   Embedding certificates as base64 for CI/CD compatibility..." -ForegroundColor Yellow
 
@@ -180,17 +192,8 @@ foreach ($match in $keyMatches) {
     }
 }
 
-# Find and replace certificate-authority
-$caMatches = [regex]::Matches($kubeconfigContent, "certificate-authority:\s*(.+?)(\r?\n)")
-foreach ($match in $caMatches) {
-    $caPath = $match.Groups[1].Value.Trim()
-    if (Test-Path $caPath) {
-        $caData = [Convert]::ToBase64String([System.IO.File]::ReadAllBytes($caPath))
-        $replacement = "certificate-authority-data: $caData" + $match.Groups[2].Value
-        $kubeconfigContent = $kubeconfigContent -replace [regex]::Escape($match.Value), $replacement
-        Write-Host "     Embedded certificate-authority" -ForegroundColor Green
-    }
-}
+# Note: We skip certificate-authority for ngrok since we're using insecure-skip-tls-verify
+# This is safe for testing with ngrok's self-signed certificates
 
 # Save updated kubeconfig
 Set-Content -Path $kubeconfigPath -Value $kubeconfigContent -NoNewline
