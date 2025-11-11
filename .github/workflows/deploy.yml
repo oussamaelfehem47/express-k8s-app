@@ -10,10 +10,6 @@ env:
   IMAGE_NAME: express-k8s-app
   NAMESPACE: express-app
 
-defaults:
-  run:
-    working-directory: ./express-k8s-app
-
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -54,7 +50,7 @@ jobs:
     - name: Build and push Docker image
       uses: docker/build-push-action@v5
       with:
-        context: ./express-k8s-app
+        context: .
         push: true
         tags: |
           ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest
