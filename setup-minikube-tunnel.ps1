@@ -153,9 +153,48 @@ $ngrokHTTPS = $publicURL -replace '^http://', 'https://'
 $kubeconfigContent = $kubeconfigContent -replace "server:\s*https://127\.0\.0\.1:\d+", "server: $ngrokHTTPS"
 $kubeconfigContent = $kubeconfigContent -replace "server:\s*https://.*:58093", "server: $ngrokHTTPS"
 
+# Embed certificates as base64 (fix for CI/CD)
+Write-Host "   Embedding certificates as base64 for CI/CD compatibility..." -ForegroundColor Yellow
+
+# Find and replace client-certificate
+$certMatches = [regex]::Matches($kubeconfigContent, "client-certificate:\s*(.+?)(\r?\n)")
+foreach ($match in $certMatches) {
+    $certPath = $match.Groups[1].Value.Trim()
+    if (Test-Path $certPath) {
+        $certData = [Convert]::ToBase64String([System.IO.File]::ReadAllBytes($certPath))
+        $replacement = "client-certificate-data: $certData" + $match.Groups[2].Value
+        $kubeconfigContent = $kubeconfigContent -replace [regex]::Escape($match.Value), $replacement
+        Write-Host "     Embedded client-certificate" -ForegroundColor Green
+    }
+}
+
+# Find and replace client-key
+$keyMatches = [regex]::Matches($kubeconfigContent, "client-key:\s*(.+?)(\r?\n)")
+foreach ($match in $keyMatches) {
+    $keyPath = $match.Groups[1].Value.Trim()
+    if (Test-Path $keyPath) {
+        $keyData = [Convert]::ToBase64String([System.IO.File]::ReadAllBytes($keyPath))
+        $replacement = "client-key-data: $keyData" + $match.Groups[2].Value
+        $kubeconfigContent = $kubeconfigContent -replace [regex]::Escape($match.Value), $replacement
+        Write-Host "     Embedded client-key" -ForegroundColor Green
+    }
+}
+
+# Find and replace certificate-authority
+$caMatches = [regex]::Matches($kubeconfigContent, "certificate-authority:\s*(.+?)(\r?\n)")
+foreach ($match in $caMatches) {
+    $caPath = $match.Groups[1].Value.Trim()
+    if (Test-Path $caPath) {
+        $caData = [Convert]::ToBase64String([System.IO.File]::ReadAllBytes($caPath))
+        $replacement = "certificate-authority-data: $caData" + $match.Groups[2].Value
+        $kubeconfigContent = $kubeconfigContent -replace [regex]::Escape($match.Value), $replacement
+        Write-Host "     Embedded certificate-authority" -ForegroundColor Green
+    }
+}
+
 # Save updated kubeconfig
 Set-Content -Path $kubeconfigPath -Value $kubeconfigContent -NoNewline
-Write-Host "   Kubeconfig updated with ngrok URL" -ForegroundColor Green
+Write-Host "   Kubeconfig updated with ngrok URL and embedded certificates" -ForegroundColor Green
 
 # Test connection
 Write-Host ""
