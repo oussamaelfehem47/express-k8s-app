@@ -1,0 +1,16 @@
+﻿name: Simple Test
+
+on: [push]
+
+jobs:
+  test-simple:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Run a simple command
+        run: echo "Hello from GitHub Actions!"
+        
+      - name: List files
+        run: ls -la
