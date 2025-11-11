@@ -75,8 +75,16 @@ jobs:
         KUBE_CONFIG_DATA: ${{ secrets.KUBECONFIG }}
       run: |
         mkdir -p ~/.kube
-        echo "$KUBE_CONFIG_DATA" | base64 --decode > ~/.kube/config
+        # Try to decode as base64, if it fails, use as plain text
+        if echo "$KUBE_CONFIG_DATA" | base64 -d > ~/.kube/config 2>/dev/null; then
+          echo "Kubeconfig decoded from base64"
+        else
+          echo "$KUBE_CONFIG_DATA" > ~/.kube/config
+          echo "Kubeconfig used as plain text"
+        fi
         chmod 600 ~/.kube/config
+        # Verify the kubeconfig is valid
+        kubectl cluster-info --request-timeout=10s || true
         
     - name: Deploy with Helm
       run: |
