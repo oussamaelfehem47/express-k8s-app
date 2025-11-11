@@ -79,15 +79,33 @@ jobs:
         KUBE_CONFIG_DATA: ${{ secrets.KUBECONFIG }}
       run: |
         mkdir -p ~/.kube
+        # Remove any leading/trailing whitespace and newlines
+        KUBE_CONFIG_DATA=$(echo "$KUBE_CONFIG_DATA" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+        
         # Try to decode as base64, if it fails, use as plain text
-        if echo "$KUBE_CONFIG_DATA" | base64 -d > ~/.kube/config 2>/dev/null; then
+        if echo "$KUBE_CONFIG_DATA" | base64 -d > ~/.kube/config.tmp 2>/dev/null && [ -s ~/.kube/config.tmp ]; then
+          mv ~/.kube/config.tmp ~/.kube/config
           echo "Kubeconfig decoded from base64"
         else
-          echo "$KUBE_CONFIG_DATA" > ~/.kube/config
+          # Write as plain text, ensuring proper formatting
+          printf '%s\n' "$KUBE_CONFIG_DATA" > ~/.kube/config
           echo "Kubeconfig used as plain text"
         fi
+        
+        # Remove any BOM or special characters that might cause YAML parsing issues
+        sed -i '1s/^\xEF\xBB\xBF//' ~/.kube/config 2>/dev/null || true
+        
         chmod 600 ~/.kube/config
-        # Verify the kubeconfig is valid
+        
+        # Validate the kubeconfig YAML structure
+        if ! kubectl config view --raw > /dev/null 2>&1; then
+          echo "Error: Invalid kubeconfig file"
+          echo "First 500 characters of config:"
+          head -c 500 ~/.kube/config
+          exit 1
+        fi
+        
+        # Verify the kubeconfig is valid and cluster is reachable
         kubectl cluster-info --request-timeout=10s || true
         
     - name: Deploy with Helm
