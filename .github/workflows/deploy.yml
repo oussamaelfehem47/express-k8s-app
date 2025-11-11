@@ -71,9 +71,12 @@ jobs:
       uses: azure/setup-helm@v3
 
     - name: Configure Kubernetes context
+      env:
+        KUBE_CONFIG_DATA: ${{ secrets.KUBECONFIG }}
       run: |
         mkdir -p ~/.kube
-        echo "${{ secrets.KUBECONFIG }}" > ~/.kube/config
+        echo "$KUBE_CONFIG_DATA" | base64 --decode > ~/.kube/config
+        chmod 600 ~/.kube/config
         
     - name: Deploy with Helm
       run: |
